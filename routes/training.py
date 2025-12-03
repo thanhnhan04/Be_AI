@@ -1,61 +1,94 @@
 """
-Training Routes
-Step 4: Train CF model (batch job)
+Training Routes - Experience Domain
+API endpoints để trigger training pipeline
 """
 
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 
-from auth import get_current_superuser
-from services import recommendation_service
-from schemas import TrainingResponse
+from services.training_service import training_service
 
 router = APIRouter(prefix="/api/training", tags=["training"])
 
 
-@router.post("/train-cf-model", response_model=TrainingResponse)
-async def train_cf_model(
-    background_tasks: BackgroundTasks,
-    current_user: dict = Depends(get_current_superuser)
-):
+@router.post("/preprocess")
+async def trigger_preprocess(background_tasks: BackgroundTasks):
     """
-    Train CF model (Step 4)
-    
-    This is a batch job that should be run periodically:
-    - Daily
-    - Every 2-3 days
-    - Weekly
+    Trigger preprocessing: MongoDB interactions → CSV
+    Step 2 trong flow
     
     Process:
-    1. Fetch interactions from DB
-    2. Preprocess data
-    3. Label encoding (user/item → idx)
-    4. Train CF model (SVD/ALS)
-    5. Save model + encoders
+    1. Fetch interactions từ MongoDB
+    2. Convert interaction types → implicit ratings
+    3. Save to CSV file
     """
-    try:
-        # Run training in background
-        background_tasks.add_task(recommendation_service.train_cf_model)
-        
-        return TrainingResponse(
-            status="started",
-            message="CF model training started in background"
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    background_tasks.add_task(training_service.run_preprocessing)
+    return {
+        "message": "Preprocessing started in background",
+        "status": "pending"
+    }
 
 
-@router.post("/train-cf-model-sync", response_model=TrainingResponse)
-async def train_cf_model_sync(
-    current_user: dict = Depends(get_current_superuser)
-):
-    """Train CF model synchronously (for testing)"""
-    try:
-        metrics = await recommendation_service.train_cf_model()
-        
-        return TrainingResponse(
-            status="completed",
-            message="CF model trained successfully",
-            metrics=metrics
+@router.post("/train")
+async def trigger_training(background_tasks: BackgroundTasks):
+    """
+    Trigger model training: Train ALS model
+    Steps 3-5 trong flow
+    
+    Process:
+    1. Load CSV data
+    2. Label encoding (user_id, experience_id → indices)
+    3. Train ALS model
+    4. Save model + encoders
+    """
+    background_tasks.add_task(training_service.run_training)
+    return {
+        "message": "Training started in background",
+        "status": "pending"
+    }
+
+
+@router.post("/full-pipeline")
+async def trigger_full_pipeline(background_tasks: BackgroundTasks):
+    """
+    Run full training pipeline: Preprocessing + Training
+    
+    Executes:
+    1. Preprocess interactions
+    2. Train ALS model
+    3. Save all artifacts
+    """
+    background_tasks.add_task(training_service.run_full_pipeline)
+    return {
+        "message": "Full training pipeline started in background",
+        "status": "pending"
+    }
+
+
+@router.get("/status")
+async def get_training_status():
+    """
+    Get current training status
+    
+    Returns:
+    - current_status: idle, preprocessing, training, completed, failed
+    - last_training: metadata từ lần train trước
+    """
+    status = training_service.get_status()
+    return status
+
+
+@router.get("/metrics")
+async def get_training_metrics():
+    """
+    Get metrics từ lần training cuối
+    
+    Returns training metrics nếu có
+    """
+    metrics = training_service.get_metrics()
+    if metrics:
+        return metrics
+    else:
+        raise HTTPException(
+            status_code=404,
+            detail="No training metrics found. Please train the model first."
         )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))

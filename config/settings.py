@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables"""
     
     # Application
-    APP_NAME: str = "Movie Recommendation System"
+    APP_NAME: str = "Experience Recommendation System"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = True
     HOST: str = "0.0.0.0"
@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     
     # MongoDB
     MONGODB_URL: str
-    MONGODB_DB_NAME: str = "movie_recommendation"
+    MONGODB_DB_NAME: str = "recommend_experiences"
     
     # Redis
     REDIS_HOST: str = "localhost"

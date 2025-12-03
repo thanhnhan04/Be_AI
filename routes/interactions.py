@@ -1,14 +1,14 @@
 """
-Interaction Routes
-Step 1: API để lưu interaction (wishlist/booking/click)
+Interaction Routes - Experience Domain
+Step 1: API để lưu user interactions (view/click/wishlist/booking/rating)
 """
 
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from auth import get_current_active_user
-from services import interaction_service
-from schemas import InteractionCreate, InteractionResponse
+from services.interaction_service import interaction_service
+from schemas.experience_schemas import InteractionCreate, InteractionResponse
 
 router = APIRouter(prefix="/api/interactions", tags=["interactions"])
 
@@ -19,15 +19,15 @@ async def create_interaction(
     current_user: dict = Depends(get_current_active_user)
 ):
     """
-    Create a new interaction (Step 1)
+    Create a new interaction (Step 1 trong flow)
     
     Interaction types:
-    - view: User viewed the movie
-    - click: User clicked on the movie
-    - wishlist: User added to wishlist
-    - booking: User booked/rented the movie
-    - rating: User rated the movie
-    - like: User liked the movie
+    - view: User viewed the experience (implicit rating: 1.0)
+    - click: User clicked on the experience (implicit rating: 2.0)
+    - wishlist: User added to wishlist (implicit rating: 3.0)
+    - booking: User booked the experience (implicit rating: 5.0)
+    - rating: User gave explicit rating (rating: 1-5)
+    - completed: User completed the experience (implicit rating: 5.0)
     """
     user_id = str(current_user['_id'])
     
@@ -40,11 +40,9 @@ async def create_interaction(
         return InteractionResponse(
             id=str(interaction_doc['_id']),
             user_id=str(interaction_doc['user_id']),
-            movie_id=str(interaction_doc['movie_id']),
+            experience_id=str(interaction_doc['experience_id']),
             interaction_type=interaction_doc['interaction_type'],
             rating=interaction_doc.get('rating'),
-            watched=interaction_doc.get('watched', False),
-            liked=interaction_doc.get('liked', False),
             created_at=interaction_doc['created_at']
         )
     except Exception as e:
@@ -68,11 +66,9 @@ async def get_my_interactions(
         InteractionResponse(
             id=str(i['_id']),
             user_id=str(i['user_id']),
-            movie_id=str(i['movie_id']),
+            experience_id=str(i['experience_id']),
             interaction_type=i['interaction_type'],
             rating=i.get('rating'),
-            watched=i.get('watched', False),
-            liked=i.get('liked', False),
             created_at=i['created_at']
         )
         for i in interactions

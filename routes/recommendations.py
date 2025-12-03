@@ -1,33 +1,63 @@
+from fastapi import APIRouter, Query
+from schemas.experience_schemas import RecommendationResponse, ExperienceRecommendation
+from datetime import datetime
+
+router = APIRouter(prefix="/api/recommendations", tags=["recommendations"])
+
+@router.get("/recommendations/{user_id}", response_model=RecommendationResponse)
+async def get_recommendations(user_id: str, top_k: int = Query(10, ge=1, le=50)):
+    # TODO: Replace with real recommendation logic
+    mock_recommendations = [
+        ExperienceRecommendation(
+            id="507f1f77bcf86cd799439011",
+            name="Phong Nha Cave Tour",
+            description="Explore the amazing Phong Nha cave...",
+            location="Quang Binh, Vietnam",
+            price=500000,
+            average_rating=4.8,
+            review_count=1523,
+            images=["https://example.com/image1.jpg"],
+            category="Adventure",
+            score=0.892,
+            reason="Based on your love for adventure activities"
+        )
+    ]
+    return RecommendationResponse(
+        user_id=user_id,
+        recommendations=mock_recommendations,
+        total=len(mock_recommendations),
+        generated_at=datetime.utcnow(),
+        model_version="1.0.0"
+    )
 """
-Recommendation Routes
-Step 6: Serve API Top-K recommendation
+Recommendation Routes - Experience Domain
+Step 6: Serve API Top-K personalized recommendations
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from typing import Optional
 
 from auth import get_current_active_user
-from services import recommendation_service
-from schemas import RecommendationResponse
+from services.recommendation_service import recommendation_service
 
 router = APIRouter(prefix="/api/recommendations", tags=["recommendations"])
 
 
-@router.get("/", response_model=RecommendationResponse)
+@router.get("/")
 async def get_recommendations(
     top_k: int = Query(10, ge=1, le=50, description="Number of recommendations"),
-    exclude_watched: bool = Query(True, description="Exclude already watched movies"),
+    use_cache: bool = Query(True, description="Use Redis cache"),
     current_user: dict = Depends(get_current_active_user)
 ):
     """
-    Get top-K personalized recommendations (Step 6)
+    Get top-K personalized experience recommendations (Step 6)
     
-    Process:
-    1. Load CF model + mappings
+    Flow:
+    1. Load ALS model + encoders
     2. Map user_id → user_idx
-    3. Get items not interacted → predict score
-    4. Get top-K → map item_idx → item info
-    5. Return JSON list: top-K items
+    3. Calculate scores for all items
+    4. Get top-K items
+    5. Fetch experience details from MongoDB
+    6. Return JSON with recommendations
     """
     user_id = str(current_user['_id'])
     
@@ -35,31 +65,73 @@ async def get_recommendations(
         recommendations = await recommendation_service.get_recommendations(
             user_id=user_id,
             top_k=top_k,
-            exclude_watched=exclude_watched
+            use_cache=use_cache
         )
         return recommendations
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get recommendations: {str(e)}")
 
 
-@router.get("/{user_id}", response_model=RecommendationResponse)
+@router.get("/test")
+async def test_recommendations(
+    user_id: str = Query("test_user", description="User ID for testing"),
+    top_k: int = Query(10, ge=1, le=50)
+):
+    """
+    Test endpoint without authentication
+    Useful for testing recommendations before frontend integration
+    """
+    try:
+        recommendations = await recommendation_service.get_recommendations(
+            user_id=user_id,
+            top_k=top_k,
+            use_cache=False
+        )
+        return recommendations
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/similar/{experience_id}")
+async def get_similar_experiences(
+    experience_id: str,
+    top_k: int = Query(10, ge=1, le=50),
+    current_user: dict = Depends(get_current_active_user)
+):
+    """
+    Get similar experiences based on item-item similarity
+    Uses item factors từ ALS model
+    """
+    try:
+        similar = await recommendation_service.get_similar_experiences(
+            experience_id=experience_id,
+            top_k=top_k
+        )
+        return similar
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{user_id}")
 async def get_recommendations_for_user(
     user_id: str,
     top_k: int = Query(10, ge=1, le=50),
-    exclude_watched: bool = Query(True),
     current_user: dict = Depends(get_current_active_user)
 ):
-    """Get recommendations for specific user (admin/testing)"""
+    """
+    Get recommendations for specific user (admin/testing only)
+    Requires superuser permission
+    """
     # Only allow superusers to get recommendations for other users
     if not current_user.get('is_superuser', False):
         if str(current_user['_id']) != user_id:
-            raise HTTPException(status_code=403, detail="Not authorized")
+            raise HTTPException(status_code=403, detail="Not authorized to access other user's recommendations")
     
     try:
         recommendations = await recommendation_service.get_recommendations(
             user_id=user_id,
             top_k=top_k,
-            exclude_watched=exclude_watched
+            use_cache=True
         )
         return recommendations
     except Exception as e:

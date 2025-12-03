@@ -4,57 +4,57 @@ services:
   # MongoDB Database
   mongodb:
     image: mongo:7.0
-    container_name: movie-recommendation-mongodb
+    container_name: experience-recommendation-mongodb
     restart: unless-stopped
     ports:
       - "27017:27017"
     environment:
-      MONGO_INITDB_DATABASE: movie_recommendation
+      MONGO_INITDB_DATABASE: recommend_experiences
     volumes:
       - mongodb_data:/data/db
     networks:
-      - movie-recommendation-network
+      - experience-recommendation-network
 
   # Redis Cache
   redis:
     image: redis:7-alpine
-    container_name: movie-recommendation-redis
+    container_name: experience-recommendation-redis
     restart: unless-stopped
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
     networks:
-      - movie-recommendation-network
+      - experience-recommendation-network
 
   # FastAPI Backend
   backend:
     build: .
-    container_name: movie-recommendation-backend
+    container_name: experience-recommendation-backend
     restart: unless-stopped
     ports:
       - "8000:8000"
     environment:
       - MONGODB_URL=mongodb://mongodb:27017
-      - MONGODB_DB_NAME=movie_recommendation
+      - MONGODB_DB_NAME=recommend_experiences
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-me}
-      - TMDB_API_KEY=${TMDB_API_KEY:-}
       - DEBUG=True
     volumes:
       - ./models:/app/models
       - ./logs:/app/logs
+      - ./data:/app/data
     depends_on:
       - mongodb
       - redis
     networks:
-      - movie-recommendation-network
+      - experience-recommendation-network
 
 volumes:
   mongodb_data:
   redis_data:
 
 networks:
-  movie-recommendation-network:
+  experience-recommendation-network:
     driver: bridge
