@@ -13,12 +13,12 @@ import logging
 from config import settings
 from database import connect_to_mongodb, close_mongodb_connection
 from database import connect_to_redis, close_redis_connection
-from routes.auth import router as auth_router
 from routes.interactions import router as interactions_router
 from routes.recommendations import router as recommendations_router
 from routes.training import router as training_router
 from routes.test import router as test_router
 from routes.experiences import router as experiences_router
+from routes.user_sync import router as user_sync_router
 
 # Configure logging
 logging.basicConfig(
@@ -103,7 +103,6 @@ app = FastAPI(
     
     ## Features
     
-    * **Authentication**: JWT-based user authentication
     * **Interactions**: Track user behavior (view, click, wishlist, booking, rating, completed)
     * **Recommendations**: Personalized experience recommendations using ALS
     * **Training**: Automated training pipeline with preprocessing
@@ -142,12 +141,12 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(auth_router)
 app.include_router(interactions_router)
 app.include_router(recommendations_router)
 app.include_router(training_router)
 app.include_router(test_router)
 app.include_router(experiences_router)
+app.include_router(user_sync_router)
 
 
 @app.get("/")
@@ -160,7 +159,6 @@ async def root():
         "docs": "/docs",
         "redoc": "/redoc",
         "endpoints": {
-            "auth": "/api/auth",
             "interactions": "/api/interactions",
             "recommendations": "/api/recommendations",
             "training": "/api/training"

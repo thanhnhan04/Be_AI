@@ -34,19 +34,18 @@ Recommendation Routes - Experience Domain
 Step 6: Serve API Top-K personalized recommendations
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query
 
-from auth import get_current_active_user
 from services.recommendation_service import recommendation_service
 
 router = APIRouter(prefix="/api/recommendations", tags=["recommendations"])
 
 
-@router.get("/")
+@router.get("/{user_id}")
 async def get_recommendations(
+    user_id: str,
     top_k: int = Query(10, ge=1, le=50, description="Number of recommendations"),
-    use_cache: bool = Query(True, description="Use Redis cache"),
-    current_user: dict = Depends(get_current_active_user)
+    use_cache: bool = Query(True, description="Use Redis cache")
 ):
     """
     Get top-K personalized experience recommendations (Step 6)
@@ -59,8 +58,6 @@ async def get_recommendations(
     5. Fetch experience details from MongoDB
     6. Return JSON with recommendations
     """
-    user_id = str(current_user['_id'])
-    
     try:
         recommendations = await recommendation_service.get_recommendations(
             user_id=user_id,
@@ -95,8 +92,7 @@ async def test_recommendations(
 @router.get("/similar/{experience_id}")
 async def get_similar_experiences(
     experience_id: str,
-    top_k: int = Query(10, ge=1, le=50),
-    current_user: dict = Depends(get_current_active_user)
+    top_k: int = Query(10, ge=1, le=50)
 ):
     """
     Get similar experiences based on item-item similarity
@@ -112,21 +108,14 @@ async def get_similar_experiences(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/{user_id}")
+@router.get("/user/{user_id}")
 async def get_recommendations_for_user(
     user_id: str,
-    top_k: int = Query(10, ge=1, le=50),
-    current_user: dict = Depends(get_current_active_user)
+    top_k: int = Query(10, ge=1, le=50)
 ):
     """
-    Get recommendations for specific user (admin/testing only)
-    Requires superuser permission
+    Get recommendations for specific user
     """
-    # Only allow superusers to get recommendations for other users
-    if not current_user.get('is_superuser', False):
-        if str(current_user['_id']) != user_id:
-            raise HTTPException(status_code=403, detail="Not authorized to access other user's recommendations")
-    
     try:
         recommendations = await recommendation_service.get_recommendations(
             user_id=user_id,

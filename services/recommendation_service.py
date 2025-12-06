@@ -184,16 +184,13 @@ class RecommendationService:
     ) -> Dict:
         """Build response với experience details"""
         
-        # Convert to ObjectId
-        object_ids = [ObjectId(id) for id in item_ids if ObjectId.is_valid(id)]
-        
-        # Fetch từ MongoDB
+        # Fetch từ MongoDB by experience_id (not _id)
         experiences = await db[EXPERIENCES_COLLECTION].find({
-            "_id": {"$in": object_ids}
+            "experience_id": {"$in": list(item_ids)}
         }).to_list(length=None)
         
-        # Map by ID
-        exp_map = {str(e['_id']): e for e in experiences}
+        # Map by experience_id
+        exp_map = {e.get('experience_id'): e for e in experiences if e.get('experience_id')}
         
         # Build recommendations list
         recommendations = []
@@ -201,7 +198,8 @@ class RecommendationService:
             if exp_id in exp_map:
                 exp = exp_map[exp_id]
                 recommendations.append({
-                    "id": exp_id,
+                    "id": str(exp.get('_id')),  # MongoDB ObjectId
+                    "experience_id": exp_id,  # Experience ID from model
                     "name": exp.get('name', 'Unknown'),
                     "description": exp.get('description', ''),
                     "location": exp.get('city', 'Unknown'),

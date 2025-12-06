@@ -4,9 +4,8 @@ Step 1: API để lưu user interactions (view/click/wishlist/booking/rating)
 """
 
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, HTTPException, status
 
-from auth import get_current_active_user
 from services.interaction_service import interaction_service
 from schemas.experience_schemas import InteractionCreate, InteractionResponse
 
@@ -15,8 +14,7 @@ router = APIRouter(prefix="/api/interactions", tags=["interactions"])
 
 @router.post("/", response_model=InteractionResponse, status_code=status.HTTP_201_CREATED)
 async def create_interaction(
-    interaction: InteractionCreate,
-    current_user: dict = Depends(get_current_active_user)
+    interaction: InteractionCreate
 ):
     """
     Create a new interaction (Step 1 trong flow)
@@ -28,12 +26,12 @@ async def create_interaction(
     - booking: User booked the experience (implicit rating: 5.0)
     - rating: User gave explicit rating (rating: 1-5)
     - completed: User completed the experience (implicit rating: 5.0)
-    """
-    user_id = str(current_user['_id'])
     
+    Note: user_id comes from request body
+    """
     try:
         interaction_doc = await interaction_service.create_interaction(
-            user_id=user_id,
+            user_id=interaction.user_id,
             interaction_data=interaction
         )
         
@@ -49,14 +47,12 @@ async def create_interaction(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/my-interactions", response_model=List[InteractionResponse])
-async def get_my_interactions(
-    interaction_type: str = None,
-    current_user: dict = Depends(get_current_active_user)
+@router.get("/user/{user_id}", response_model=List[InteractionResponse])
+async def get_user_interactions(
+    user_id: str,
+    interaction_type: str = None
 ):
-    """Get all interactions for current user"""
-    user_id = str(current_user['_id'])
-    
+    """Get all interactions for a user"""
     interactions = await interaction_service.get_user_interactions(
         user_id=user_id,
         interaction_type=interaction_type
@@ -75,14 +71,12 @@ async def get_my_interactions(
     ]
 
 
-@router.delete("/{interaction_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{user_id}/{interaction_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_interaction(
-    interaction_id: str,
-    current_user: dict = Depends(get_current_active_user)
+    user_id: str,
+    interaction_id: str
 ):
     """Delete an interaction"""
-    user_id = str(current_user['_id'])
-    
     success = await interaction_service.delete_interaction(user_id, interaction_id)
     
     if not success:

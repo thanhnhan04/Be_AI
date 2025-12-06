@@ -20,7 +20,8 @@ class InteractionType(str, Enum):
 
 
 class InteractionCreate(BaseModel):
-    """Schema để tạo interaction mới"""
+    """Schema để tạo interaction mới - nhận từ server chính"""
+    user_id: str = Field(..., description="ID của user từ server chính")
     experience_id: str = Field(..., description="ID của experience")
     interaction_type: InteractionType = Field(..., description="Loại interaction")
     rating: Optional[float] = Field(None, ge=1.0, le=5.0, description="Rating 1-5 sao")
@@ -30,6 +31,7 @@ class InteractionCreate(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
+                "user_id": "user123",
                 "experience_id": "507f1f77bcf86cd799439011",
                 "interaction_type": "wishlist",
                 "rating": 4.5,
@@ -52,6 +54,38 @@ class InteractionResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+
+class ExperienceCreate(BaseModel):
+    """Schema để tạo experience mới từ server chính"""
+    experience_id: str = Field(..., description="Unique experience ID từ server chính")
+    name: str = Field(..., description="Tên experience")
+    description: Optional[str] = Field("", description="Mô tả")
+    city: Optional[str] = Field("", description="Thành phố")
+    state: Optional[str] = Field("", description="Tỉnh/Bang")
+    address: Optional[str] = Field("", description="Địa chỉ")
+    postal_code: Optional[str] = Field("", description="Mã bưu điện")
+    stars: Optional[float] = Field(0.0, ge=0, le=5, description="Rating trung bình")
+    review_count: Optional[int] = Field(0, description="Số lượng review")
+    categories: Optional[str] = Field("", description="Danh mục (comma separated)")
+    price: Optional[float] = Field(0.0, description="Giá tham khảo")
+    images: Optional[List[str]] = Field(default_factory=list, description="Danh sách URL ảnh")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "experience_id": "exp_12345",
+                "name": "Phong Nha Cave Tour",
+                "description": "Explore the amazing cave",
+                "city": "Quang Binh",
+                "state": "Vietnam",
+                "stars": 4.8,
+                "review_count": 1523,
+                "categories": "Adventure, Nature",
+                "price": 500000,
+                "images": ["https://example.com/img.jpg"]
+            }
+        }
 
 
 class ExperienceRecommendation(BaseModel):

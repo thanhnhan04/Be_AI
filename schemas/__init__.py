@@ -1,50 +1,8 @@
 """Pydantic schemas for request/response validation"""
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
-
-
-# ============= Authentication Schemas =============
-
-class UserRegister(BaseModel):
-    """User registration request"""
-    email: EmailStr
-    username: str = Field(..., min_length=3, max_length=50)
-    password: str = Field(..., min_length=6)
-    full_name: Optional[str] = None
-    preferences: List[str] = []
-
-
-class UserLogin(BaseModel):
-    """User login request"""
-    username: str
-    password: str
-
-
-class Token(BaseModel):
-    """JWT token response"""
-    access_token: str
-    token_type: str = "bearer"
-
-
-class TokenData(BaseModel):
-    """Token payload data"""
-    user_id: Optional[str] = None
-
-
-class UserResponse(BaseModel):
-    """User response (no password)"""
-    id: str
-    email: EmailStr
-    username: str
-    full_name: Optional[str] = None
-    is_active: bool
-    preferences: List[str] = []
-    created_at: datetime
-    
-    class Config:
-        from_attributes = True
 
 
 # ============= Experience Schemas =============

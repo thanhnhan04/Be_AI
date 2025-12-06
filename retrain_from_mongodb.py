@@ -5,6 +5,7 @@ import asyncio
 import pandas as pd
 import numpy as np
 import pickle
+import os
 from pathlib import Path
 from datetime import datetime
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -21,19 +22,30 @@ async def load_data_from_mongodb():
     print("LOADING DATA FROM MONGODB")
     print("="*60)
     
-    client = AsyncIOMotorClient('mongodb://localhost:27017')
-    db = client['recommend_experiences']
+    # Get MongoDB URL from environment (for Docker compatibility)
+    mongodb_url = os.getenv('MONGODB_URL', 'mongodb://localhost:27017')
+    mongodb_db = os.getenv('MONGODB_DB_NAME', 'recommend_experiences')
     
-    # Load interactions
+    print(f"\nConnecting to: {mongodb_url}")
+    client = AsyncIOMotorClient(mongodb_url)
+    db = client[mongodb_db]
+    
+    # Load interactions (now with business_id field)
     print("\nLoading interactions...")
     interactions = await db.interactions.find().to_list(length=None)
     print(f"  ✓ Loaded {len(interactions):,} interactions")
     
     # Convert to DataFrame
     data = []
+    skipped = 0
+    
     for inter in interactions:
         user_id = inter.get('user_id')
-        exp_id = str(inter.get('experience_id'))
+        experience_id = inter.get('experience_id')  # Use experience_id directly
+        
+        if not experience_id:
+            skipped += 1
+            continue
         
         # Convert ObjectId to string if needed
         if isinstance(user_id, ObjectId):
@@ -54,9 +66,12 @@ async def load_data_from_mongodb():
         
         data.append({
             'user_id': user_id,
-            'experience_id': exp_id,
+            'experience_id': experience_id,
             'rating': rating
         })
+    
+    if skipped > 0:
+        print(f"  ⚠️  Skipped {skipped:,} interactions (no experience_id)")
     
     df = pd.DataFrame(data)
     

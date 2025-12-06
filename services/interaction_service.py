@@ -25,14 +25,15 @@ class InteractionService:
         """
         Create a new interaction (Step 1: Lưu interaction vào DB)
         
-        FE gửi POST request → Backend nhận và lưu vào DB
+        Server chính gửi POST request → Backend nhận và lưu vào DB
+        user_id và experience_id là string (không phải ObjectId)
         """
         db = get_database()
         
         # Check if interaction already exists
         existing = await db[INTERACTIONS_COLLECTION].find_one({
-            "user_id": ObjectId(user_id),
-            "experience_id": ObjectId(interaction_data.experience_id),
+            "user_id": user_id,
+            "experience_id": interaction_data.experience_id,
             "interaction_type": interaction_data.interaction_type
         })
         
@@ -48,10 +49,6 @@ class InteractionService:
                 update_data["booked"] = True
             if interaction_data.completed:
                 update_data["completed"] = True
-            if interaction_data.liked:
-                update_data["liked"] = True
-            if interaction_data.saved_to_wishlist:
-                update_data["saved_to_wishlist"] = True
             
             await db[INTERACTIONS_COLLECTION].update_one(
                 {"_id": existing["_id"]},
@@ -65,14 +62,12 @@ class InteractionService:
         else:
             # Create new interaction
             interaction_doc = {
-                "user_id": ObjectId(user_id),
-                "experience_id": ObjectId(interaction_data.experience_id),
+                "user_id": user_id,  # String, not ObjectId
+                "experience_id": interaction_data.experience_id,  # String, not ObjectId
                 "interaction_type": interaction_data.interaction_type,
                 "rating": interaction_data.rating,
                 "booked": interaction_data.booked,
                 "completed": interaction_data.completed,
-                "liked": interaction_data.liked,
-                "saved_to_wishlist": interaction_data.saved_to_wishlist,
                 "created_at": datetime.utcnow(),
                 "updated_at": datetime.utcnow()
             }
@@ -104,7 +99,7 @@ class InteractionService:
         """Get all interactions for a user"""
         db = get_database()
         
-        query = {"user_id": ObjectId(user_id)}
+        query = {"user_id": user_id}  # String, not ObjectId
         if interaction_type:
             query["interaction_type"] = interaction_type
         
@@ -132,7 +127,7 @@ class InteractionService:
         
         result = await db[INTERACTIONS_COLLECTION].delete_one({
             "_id": ObjectId(interaction_id),
-            "user_id": ObjectId(user_id)
+            "user_id": user_id  # String, not ObjectId
         })
         
         if result.deleted_count > 0:

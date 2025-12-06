@@ -39,7 +39,7 @@ def get_database():
 
 
 # Collection names
-USERS_COLLECTION = "users"
+USERS_COLLECTION = "users"  # Recommendation users (from sync or Yelp data)
 EXPERIENCES_COLLECTION = "experiences"
 INTERACTIONS_COLLECTION = "interactions"
 USER_SIMILARITY_COLLECTION = "user_similarities"

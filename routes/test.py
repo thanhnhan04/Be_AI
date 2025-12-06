@@ -8,7 +8,6 @@ from pydantic import BaseModel
 
 from services.interaction_service import interaction_service
 from services.recommendation_service import recommendation_service
-from services.user_service import user_service
 
 router = APIRouter(prefix="/api/test", tags=["testing"])
 
